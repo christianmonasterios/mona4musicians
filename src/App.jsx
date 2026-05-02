@@ -266,6 +266,7 @@ export default function GuitarApp() {
   const [metroBpm,       setMetroBpm]       = useState(80);
   const [metroBeat,      setMetroBeat]      = useState(-1);
   const [showAbout,      setShowAbout]      = useState(false);
+  const [showDonate,     setShowDonate]     = useState(false);
   const metroTimerRef  = useRef(null);
   const metroNextTime  = useRef(0);
   const metroBeatRef   = useRef(0);
@@ -688,6 +689,7 @@ export default function GuitarApp() {
               <text x="10" y="15" textAnchor="middle" fontFamily="Outfit,sans-serif" fontSize="12" fontWeight="700" fill="#a07840">i</text>
             </svg>
           </button>
+          {/* Tutorial */}
           <a href="#/docs" style={{ padding:"6px 12px 6px 10px", borderRadius:"100px", border:"1px solid #e8b8a8", cursor:"pointer", fontFamily:"'Outfit',sans-serif", background:"#fdf2ee", textDecoration:"none", display:"inline-flex", alignItems:"center", gap:"8px" }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <rect x="4" y="3" width="12" height="17" rx="1.5" fill="#c26a4a" opacity="0.15"/>
@@ -702,6 +704,14 @@ export default function GuitarApp() {
               <span style={{ fontSize:"0.58rem", color:"#c89a8a", letterSpacing:"0.08em" }}>TUTORIAL</span>
             </div>
           </a>
+          {/* Quiero Apoyar — cohete MP */}
+          <button onClick={()=>setShowDonate(true)} style={{ padding:"5px 14px 5px 10px", borderRadius:"14px", background:"#009ee3", border:"none", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:"8px", height:"40px" }}>
+            <span style={{ fontSize:"20px", lineHeight:1 }}>🚀</span>
+            <div style={{ borderLeft:"1px solid rgba(255,255,255,0.35)", paddingLeft:"8px", display:"flex", flexDirection:"column", lineHeight:1.3 }}>
+              <span style={{ fontSize:"0.72rem", fontWeight:"700", color:"#fff" }}>Quiero</span>
+              <span style={{ fontSize:"0.72rem", fontWeight:"900", color:"#fff" }}>Apoyar!</span>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -1058,6 +1068,56 @@ export default function GuitarApp() {
         </div>
       </div>
 
+      {/* ── Modal Donación ── */}
+      {showDonate && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:"20px" }} onClick={()=>setShowDonate(false)}>
+          <div style={{ background:"#fdf8f2", borderRadius:"20px", maxWidth:"400px", width:"100%", padding:"28px", position:"relative" }} onClick={e=>e.stopPropagation()}>
+            <button onClick={()=>setShowDonate(false)} style={{ position:"absolute", top:"14px", right:"16px", background:"none", border:"none", cursor:"pointer", color:"#ccc", fontSize:"18px" }}>✕</button>
+            <div style={{ textAlign:"center", marginBottom:"20px" }}>
+              <span style={{ fontSize:"32px" }}>🚀</span>
+              <h2 style={{ fontSize:"18px", fontWeight:"900", color:"#1a1a1a", margin:"8px 0 6px", fontFamily:"'Outfit',sans-serif" }}>¡Quiero Apoyar!</h2>
+            </div>
+            <p style={{ fontSize:"13px", color:"#888", lineHeight:1.7, margin:"0 0 20px", textAlign:"center", fontFamily:"'Outfit',sans-serif" }}>
+              MONA es un proyecto independiente, gratuito y sin publicidad.<br/>
+              Hecho con amor por la música. Tu aporte nos ayuda a mantenerlo vivo y seguir mejorándolo.<br/>
+              <strong style={{ color:"#555" }}>¿Te sumás?</strong>
+            </p>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"10px", flexWrap:"wrap" }}>
+              <a href="https://mpago.la/1bdvY3p" target="_blank" rel="noopener noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:"8px", padding:"8px 18px", borderRadius:"20px", background:"#009ee3", textDecoration:"none" }}>
+                <svg width="52" height="18" viewBox="0 0 70 22" fill="none">
+                  <ellipse cx="11" cy="11" rx="11" ry="10" fill="#fff"/>
+                  <ellipse cx="11" cy="11" rx="9" ry="8" fill="#72d0eb"/>
+                  <path d="M6 13 Q8 9 11 10 Q14 9 16 13 Q13 15 11 14 Q9 15 6 13Z" fill="#fff" opacity="0.9"/>
+                  <text x="26" y="9"  fontFamily="Arial,sans-serif" fontSize="8" fontWeight="700" fill="#fff">mercado</text>
+                  <text x="26" y="19" fontFamily="Arial,sans-serif" fontSize="8" fontWeight="700" fill="#fff">pago</text>
+                </svg>
+                <div style={{ borderLeft:"1px solid rgba(255,255,255,0.35)", paddingLeft:"8px" }}>
+                  <div style={{ fontSize:"0.75rem", fontWeight:"700", color:"#fff" }}>ARS $2.000</div>
+                  <div style={{ fontSize:"0.58rem", color:"rgba(255,255,255,0.75)" }}>monto fijo · 1 click</div>
+                </div>
+              </a>
+              <span style={{ fontSize:"0.68rem", color:"#bbb" }}>o</span>
+              <a href="https://link.mercadopago.com.ar/mona4musicians" target="_blank" rel="noopener noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:"8px", padding:"8px 18px", borderRadius:"20px", background:"#fdf8f0", border:"1.5px solid #c8a96e", textDecoration:"none" }}>
+                <svg width="52" height="18" viewBox="0 0 70 22" fill="none">
+                  <ellipse cx="11" cy="11" rx="11" ry="10" fill="#e8f4fd"/>
+                  <ellipse cx="11" cy="11" rx="9" ry="8" fill="#b8dff0"/>
+                  <path d="M6 13 Q8 9 11 10 Q14 9 16 13 Q13 15 11 14 Q9 15 6 13Z" fill="#fff" opacity="0.9"/>
+                  <text x="26" y="9"  fontFamily="Arial,sans-serif" fontSize="8" fontWeight="700" fill="#a07840">mercado</text>
+                  <text x="26" y="19" fontFamily="Arial,sans-serif" fontSize="8" fontWeight="700" fill="#a07840">pago</text>
+                </svg>
+                <div style={{ borderLeft:"1px solid #d4c4a8", paddingLeft:"8px" }}>
+                  <div style={{ fontSize:"0.75rem", fontWeight:"700", color:"#a07840" }}>Elegir monto</div>
+                  <div style={{ fontSize:"0.58rem", color:"#bbb" }}>lo que vos quieras</div>
+                </div>
+              </a>
+            </div>
+            <p style={{ fontSize:"11px", color:"#ccc", textAlign:"center", margin:"16px 0 0", fontFamily:"'Outfit',sans-serif" }}>
+              — Equipo MONA4Musicians —
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Modal About ── */}
       {showAbout && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:"20px" }} onClick={()=>setShowAbout(false)}>
@@ -1080,13 +1140,13 @@ export default function GuitarApp() {
 
             <h2 style={{ fontSize:"15px", fontWeight:"700", color:"#1a1a1a", margin:"0 0 14px", textAlign:"center", fontFamily:"'Outfit',sans-serif" }}>¿De qué se trata?</h2>
 
-            <p style={{ fontSize:"13px", color:"#666", lineHeight:1.8, margin:"0 0 12px", fontFamily:"'Outfit',sans-serif", fontStyle:"italic" }}>
+            <p style={{ fontSize:"13px", color:"#666", lineHeight:1.8, margin:"0 0 12px", fontFamily:"'Outfit',sans-serif" }}>
               MONA nació para acompañarte en tu camino con la guitarra. No importa si sos autodidacta, si estás tomando clases o si enseñás: MONA es el complemento visual que pone la teoría frente a tus ojos, lista para practicar. Sin vueltas.
             </p>
-            <p style={{ fontSize:"13px", color:"#666", lineHeight:1.8, margin:"0 0 12px", fontFamily:"'Outfit',sans-serif", fontStyle:"italic" }}>
+            <p style={{ fontSize:"13px", color:"#666", lineHeight:1.8, margin:"0 0 12px", fontFamily:"'Outfit',sans-serif" }}>
               La web está llena de videos y recursos dispersos. Nosotros quisimos reunir lo esencial en un solo lugar: escalas, acordes y armonía, directo en el diapasón.
             </p>
-            <p style={{ fontSize:"13px", color:"#666", lineHeight:1.8, margin:"0 0 18px", fontFamily:"'Outfit',sans-serif", fontStyle:"italic" }}>
+            <p style={{ fontSize:"13px", color:"#666", lineHeight:1.8, margin:"0 0 18px", fontFamily:"'Outfit',sans-serif" }}>
               MONA siempre va a buscar ser amigable. No tengas miedo de explorarla — la diseñamos para que puedas sacarle el máximo provecho y aprendas.
             </p>
 
@@ -1097,7 +1157,7 @@ export default function GuitarApp() {
                   <span style={{ fontWeight:"600", color:"#1a1a1a" }}>¿Está terminada?</span>
                 </div>
                 <div style={{ fontSize:"12px", color:"#555", paddingLeft:"16px", marginTop:"4px" }}>
-                  No, <strong style={{ color:"#1a1a1a" }}>¡PERO PROMETEMOS SEGUIR MEJORÁNDOLA! 💪🏼😎</strong>
+                  No, <strong style={{ color:"#1a1a1a" }}>¡Pero prometemos seguir mejorándola! 🫡📝</strong>
                 </div>
               </div>
               <div style={{ fontFamily:"'Outfit',sans-serif" }}>
@@ -1118,7 +1178,7 @@ export default function GuitarApp() {
               Gracias por usarla. Ahora a practicar 🎸
             </p>
             <p style={{ fontSize:"12px", color:"#c8a96e", margin:"0 0 18px", textAlign:"center", fontWeight:"600", fontFamily:"'Outfit',sans-serif" }}>
-              — Equipo MONA4Musicians
+              — Equipo MONA4Musicians —
             </p>
 
             <button onClick={()=>setShowAbout(false)} style={{ width:"100%", padding:"12px", borderRadius:"12px", border:"none", background:"#1a1a1a", color:"#fdf8f2", fontFamily:"'Outfit',sans-serif", fontSize:"14px", fontWeight:"700", cursor:"pointer", letterSpacing:"0.05em" }}>
