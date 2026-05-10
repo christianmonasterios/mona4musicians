@@ -46,7 +46,7 @@ const CHORD_TYPES = {
 };
 
 const WIZARD_INTERVALS = [
-  { semitones:0,  label:"R",  name:"Tónica",        color:"#1a1a1a" },
+  { semitones:0,  label:"R",  name:"Root",           color:"#1a1a1a" },
   { semitones:1,  label:"b2", name:"2da menor",      color:"#c05818" },
   { semitones:2,  label:"2",  name:"2da / 9na",      color:"#e8751a" },
   { semitones:3,  label:"b3", name:"3ra menor",      color:"#d63030" },
@@ -61,7 +61,7 @@ const WIZARD_INTERVALS = [
 ];
 
 const CLASSIC_INTERVALS = [
-  { semitones:0,  label:"R",  name:"Tónica",        color:"#c8392b" },
+  { semitones:0,  label:"R",  name:"Root",           color:"#c8392b" },
   { semitones:1,  label:"b2", name:"2da menor",      color:"#2a2520" },
   { semitones:2,  label:"2",  name:"2da / 9na",      color:"#2a2520" },
   { semitones:3,  label:"b3", name:"3ra menor",      color:"#2a2520" },
@@ -262,6 +262,13 @@ export default function GuitarApp() {
   const [showNotes,      setShowNotes]      = useState(false);
   const [show3NPS,       setShow3NPS]       = useState(false);
   const [npsPattern,     setNpsPattern]     = useState(0);
+  const [npsAutoPlay,    setNpsAutoPlay]    = useState(false);
+  const [npsBeatCount,   setNpsBeatCount]   = useState(0);
+  const [show313,        setShow313]        = useState(false);
+  const [string313,      setString313]      = useState(0);
+  const [position313,    setPosition313]    = useState(0);
+  const [autoPlay313,    setAutoPlay313]    = useState(false);
+  const [beatCount313,   setBeatCount313]   = useState(0);
   const [metroOn,        setMetroOn]        = useState(false);
   const [metroBpm,       setMetroBpm]       = useState(80);
   const [metroBeat,      setMetroBeat]      = useState(-1);
@@ -391,6 +398,123 @@ export default function GuitarApp() {
     return active;
   }, [show3NPS, mode, selectedScale, rootIdx, npsPattern, activeNotes]);
 
+  // ── 3-1-3 pattern ──
+  const STRING_GROUPS_313 = [[0,1,2],[1,2,3],[2,3,4],[3,4,5]];
+
+  const all313Positions = useMemo(() => {
+    if (!show313 || mode !== "scale") return [];
+    const scaleIntervals = SCALES[selectedScale]?.intervals;
+    if (!scaleIntervals || scaleIntervals.length !== 7) return [];
+    const [s0,s1,s2] = STRING_GROUPS_313[string313];
+    const positions = [];
+    for (let anchorDeg=0; anchorDeg<7; anchorDeg++) {
+      const rotated = [];
+      for (let i=0;i<7;i++) rotated.push((rootIdx+scaleIntervals[(anchorDeg+i)%7])%12);
+      const grp1=[rotated[0],rotated[1],rotated[2]], pivot=rotated[4], grp2=[rotated[6],rotated[0],rotated[1]];
+      for (let f=0;f<=FRET_COUNT-4;f++) {
+        if (getNoteAtFret(s0,f)!==grp1[0]) continue;
+        let f2=-1,f3=-1;
+        for (let ff=f+1;ff<=f+5;ff++) if (getNoteAtFret(s0,ff)===grp1[1]){f2=ff;break;}
+        if (f2<0) continue;
+        for (let ff=f2+1;ff<=f+6;ff++) if (getNoteAtFret(s0,ff)===grp1[2]){f3=ff;break;}
+        if (f3<0) continue;
+        const center=(f+f3)/2;
+        let bestPivotF=-1,bestDist=99;
+        for (let pf=0;pf<=FRET_COUNT;pf++) if (getNoteAtFret(s1,pf)===pivot&&Math.abs(pf-center)<bestDist){bestDist=Math.abs(pf-center);bestPivotF=pf;}
+        if (bestPivotF<0) continue;
+        let gf=-1,gf2=-1,gf3=-1;
+        for (let sf=0;sf<=FRET_COUNT-4;sf++) {
+          if (getNoteAtFret(s2,sf)!==grp2[0]) continue;
+          let s2f2=-1,s2f3=-1;
+          for (let ff=sf+1;ff<=sf+5;ff++) if (getNoteAtFret(s2,ff)===grp2[1]){s2f2=ff;break;}
+          if (s2f2<0) continue;
+          for (let ff=s2f2+1;ff<=sf+6;ff++) if (getNoteAtFret(s2,ff)===grp2[2]){s2f3=ff;break;}
+          if (s2f3<0) continue;
+          if (Math.abs(sf-bestPivotF)<6){gf=sf;gf2=s2f2;gf3=s2f3;break;}
+        }
+        if (gf<0) continue;
+        const active=new Set([`${s0}-${f}`,`${s0}-${f2}`,`${s0}-${f3}`,`${s1}-${bestPivotF}`,`${s2}-${gf}`,`${s2}-${gf2}`,`${s2}-${gf3}`]);
+        const pivotFrets=new Set([`${s1}-${bestPivotF}`]);
+        positions.push({active,pivotFrets,anchorFret:f,anchorDeg});
+        break;
+      }
+    }
+    positions.sort((a,b)=>a.anchorFret-b.anchorFret);
+    return positions;
+  }, [show313,mode,selectedScale,rootIdx,string313]);
+
+  const active313 = useMemo(() => {
+    if (!all313Positions.length) return null;
+    const idx = Math.min(position313, all313Positions.length - 1);
+    const main = all313Positions[idx];
+
+    // Fusión fija: cuerda 6 con cuerda 4, cuerda 5 con cuerda 3
+    const partnerGroup = string313 === 0 ? 2 : string313 === 1 ? 3 : null;
+    if (partnerGroup === null) return main;
+
+    const scaleIntervals = SCALES[selectedScale]?.intervals;
+    if (!scaleIntervals) return main;
+
+    // Calcular todas las posiciones del grupo partner
+    const [ns0,ns1,ns2] = STRING_GROUPS_313[partnerGroup];
+    const partnerPositions = [];
+
+    for (let anchorDeg=0; anchorDeg<7; anchorDeg++) {
+      const rotated=[];
+      for (let i=0;i<7;i++) rotated.push((rootIdx+scaleIntervals[(anchorDeg+i)%7])%12);
+      const grp1=[rotated[0],rotated[1],rotated[2]], pivot=rotated[4], grp2=[rotated[6],rotated[0],rotated[1]];
+      for (let f=0;f<=FRET_COUNT-4;f++) {
+        if (getNoteAtFret(ns0,f)!==grp1[0]) continue;
+        let f2=-1,f3=-1;
+        for (let ff=f+1;ff<=f+5;ff++) if (getNoteAtFret(ns0,ff)===grp1[1]){f2=ff;break;}
+        if (f2<0) continue;
+        for (let ff=f2+1;ff<=f+6;ff++) if (getNoteAtFret(ns0,ff)===grp1[2]){f3=ff;break;}
+        if (f3<0) continue;
+        const center=(f+f3)/2;
+        let bestPivotF=-1,bestDist=99;
+        for (let pf=0;pf<=FRET_COUNT;pf++) if (getNoteAtFret(ns1,pf)===pivot&&Math.abs(pf-center)<bestDist){bestDist=Math.abs(pf-center);bestPivotF=pf;}
+        if (bestPivotF<0) continue;
+        let gf=-1,gf2=-1,gf3=-1;
+        for (let sf=0;sf<=FRET_COUNT-4;sf++) {
+          if (getNoteAtFret(ns2,sf)!==grp2[0]) continue;
+          let s2f2=-1,s2f3=-1;
+          for (let ff=sf+1;ff<=sf+5;ff++) if (getNoteAtFret(ns2,ff)===grp2[1]){s2f2=ff;break;}
+          if (s2f2<0) continue;
+          for (let ff=s2f2+1;ff<=sf+6;ff++) if (getNoteAtFret(ns2,ff)===grp2[2]){s2f3=ff;break;}
+          if (s2f3<0) continue;
+          if (Math.abs(sf-bestPivotF)<6){gf=sf;gf2=s2f2;gf3=s2f3;break;}
+        }
+        if (gf<0) continue;
+        const active=new Set([`${ns0}-${f}`,`${ns0}-${f2}`,`${ns0}-${f3}`,`${ns1}-${bestPivotF}`,`${ns2}-${gf}`,`${ns2}-${gf2}`,`${ns2}-${gf3}`]);
+        partnerPositions.push({active, pivotFrets:new Set([`${ns1}-${bestPivotF}`]), anchorFret:f, anchorDeg});
+        break;
+      }
+    }
+    partnerPositions.sort((a,b)=>a.anchorFret-b.anchorFret);
+
+    // Fusionar el mismo índice del partner
+    if (!partnerPositions.length) return main;
+    const partner = partnerPositions[Math.min(idx, partnerPositions.length-1)];
+
+    return {
+      ...main,
+      active: new Set([...main.active, ...partner.active]),
+      pivotFrets: new Set([...main.pivotFrets, ...partner.pivotFrets])
+    };
+  }, [all313Positions, position313, string313, selectedScale, rootIdx]);
+
+  // Auto-avance 3NPS — 17 tiempos
+  useEffect(() => {
+    if (!npsAutoPlay||!metroOn||metroBeat<0) return;
+    setNpsBeatCount(prev=>{const next=prev+1;if(next>=17){setNpsPattern(p=>(p+1)%7);return 0;}return next;});
+  }, [metroBeat]);
+
+  // Auto-avance 3-1-3 — 13 tiempos
+  useEffect(() => {
+    if (!autoPlay313||!metroOn||metroBeat<0) return;
+    setBeatCount313(prev=>{const next=prev+1;if(next>=13){setPosition313(p=>{const total=all313Positions.length;return total>0?(p+1)%total:0;});return 0;}return next;});
+  }, [metroBeat]);
+
   const toggleString = idx => setMutedStrings(p=>{const n=new Set(p);n.has(idx)?n.delete(idx):n.add(idx);return n;});
   const toggleIv     = s   => setDisabledIvs(p=>{const n=new Set(p);n.has(s)?n.delete(s):n.add(s);return n;});
   const toggleCaged  = sh  => setActiveCaged(p=>{const n=new Set(p);n.has(sh)?n.delete(sh):n.add(sh);return n;});
@@ -485,29 +609,61 @@ export default function GuitarApp() {
     clearTimeout(metroTimerRef.current);
     setMetroOn(false);
     setMetroBeat(-1);
+    setNpsAutoPlay(false);
+    setNpsBeatCount(0);
+    setAutoPlay313(false);
+    setBeatCount313(0);
   }
 
   function getNoteDisplay(noteIdx, strIdx=null, fret=null) {
     if (!activeNotes.includes(noteIdx)) return null;
-    // 3NPS filter: only show notes that belong to the current pattern
     if (npsActiveSet !== null && strIdx !== null && fret !== null) {
       if (!npsActiveSet.has(`${strIdx}-${fret}`)) return null;
+    }
+    if (active313 !== null && strIdx !== null && fret !== null) {
+      if (!active313.active.has(`${strIdx}-${fret}`)) return null;
     }
     const interval=(noteIdx-displayRootIdx+12)%12;
     if (disabledIvs.has(interval)) return null;
     const meta=ALL_INTERVALS.find(i=>i.semitones===interval);
     if (!meta) return null;
-    const label = showNotes ? NOTE_NAMES_ES[NOTES[noteIdx]] : meta.label;
+    // Labels contextuales por escala
+    let dotLabel = showNotes ? NOTE_NAMES_ES[NOTES[noteIdx]] : meta.label;
+    if (!showNotes && mode === "scale") {
+      if (["minor","harmonicMinor","phrygian"].includes(selectedScale) && interval === 8) dotLabel = "b6";
+      if (selectedScale === "lydian" && interval === 6) dotLabel = "#4";
+    }
+    const label = dotLabel;
     const isRoot = interval === 0;
     const solidBg = meta.color;
-    // Classic non-root: carbón #3a3530 fondo, texto crema
-    // Wizard: sólido saturado, texto blanco
     const isClassicNonRoot = colorTheme === "classic" && !isRoot;
-    const bg       = isClassicNonRoot ? "#3a3530" : solidBg;
-    const borderCol= isClassicNonRoot ? "#3a3530" : solidBg;
-    const textCol  = isClassicNonRoot ? "#e8e0d8" : getTextColor(solidBg);
-    return { bg, borderColor: borderCol, textColor: textCol, label, isRoot };
+    const isPivot = active313 !== null && strIdx !== null && fret !== null && active313.pivotFrets?.has(`${strIdx}-${fret}`);
+    // CAGED chord coloring
+    const activeZoneForDot = showCaged && strIdx !== null && fret !== null
+      ? cagedPositions.find(p => activeCaged.has(p.shape) && (fret===0 ? 0>=p.loFret&&0<=p.hiFret : fret>=p.loFret&&fret<=p.hiFret))
+      : null;
+    const isChordNote = activeZoneForDot && cagedChordIntervals.has(interval);
+    const cagedColor = isChordNote ? CAGED_COLORS[activeZoneForDot.shape]?.border : null;
+    let bg, borderCol, textCol;
+    if (cagedColor) {
+      bg = cagedColor;
+      borderCol = isRoot ? "#c8392b" : cagedColor;
+      textCol = "#fff";
+    } else if (isPivot) {
+      bg = "#c8a96e"; borderCol = "#a07840"; textCol = "#fff";
+    } else {
+      bg        = isClassicNonRoot ? "#3a3530" : solidBg;
+      borderCol = isClassicNonRoot ? "#3a3530" : solidBg;
+      textCol   = isClassicNonRoot ? "#e8e0d8" : getTextColor(solidBg);
+    }
+    return { bg, borderColor: borderCol, textColor: textCol, label, isRoot, isPivot };
   }
+
+  const cagedChordIntervals = useMemo(() => {
+    if (selectedScale === "major") return new Set([0,4,7]);
+    if (selectedScale === "minor") return new Set([0,3,7]);
+    return new Set();
+  }, [selectedScale]);
 
   const harmDef = HARMONIZED_SCALES[harmScale];
 
@@ -759,8 +915,8 @@ export default function GuitarApp() {
 
           {/* Toggles contextuales */}
           <div style={{ display:"flex", gap:"7px", marginTop:"10px" }}>
-            {mode !== "harmonized" && (
-              <button onClick={()=>setShowCaged(s=>!s)} style={{ flex:1, padding:"7px 8px", borderRadius:"8px", border:`1.5px solid ${showCaged?"#c8b89a":"#e0d8cc"}`, cursor:"pointer", fontFamily:"'Outfit',sans-serif", background:showCaged?"#f9f3e8":"#fafaf8", transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"center", gap:"7px" }}>
+            {mode !== "harmonized" && (selectedScale === "major" || selectedScale === "minor") && (
+              <button onClick={()=>{ const next=!showCaged; setShowCaged(next); if(next){setShow3NPS(false);setShow313(false);setActiveCaged(new Set(["C"]));} }} style={{ flex:1, padding:"7px 8px", borderRadius:"8px", border:`1.5px solid ${showCaged?"#c8b89a":"#e0d8cc"}`, cursor:"pointer", fontFamily:"'Outfit',sans-serif", background:showCaged?"#f9f3e8":"#fafaf8", transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"center", gap:"7px" }}>
                 <svg width="58" height="18" viewBox="0 0 58 18" fill="none">
                   <circle cx="6"  cy="9" r="5.5" fill={showCaged?"#a07840":"#ccc"} opacity="0.95"/>
                   <text x="6"  y="13" textAnchor="middle" fontSize="6" fontWeight="700" fill="#fdf8f0">C</text>
@@ -777,15 +933,28 @@ export default function GuitarApp() {
               </button>
             )}
             {mode === "scale" && SCALES[selectedScale]?.intervals?.length === 7 && (
-              <button onClick={()=>{ setShow3NPS(s=>!s); setNpsPattern(0); }} style={{ flex:1, padding:"7px 8px", borderRadius:"8px", border:`1.5px solid ${show3NPS?"#7c3aed":"#e0d8cc"}`, cursor:"pointer", fontFamily:"'Outfit',sans-serif", background:show3NPS?"#7c3aed0d":"#fafaf8", transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"center", gap:"7px" }}>
+              <button onClick={()=>{ const next=!show3NPS; setShow3NPS(next); setNpsPattern(0); if(next){setShowCaged(false);setShow313(false);} else {setNpsAutoPlay(false);setNpsBeatCount(0);stopMetro();} }} style={{ flex:1, padding:"7px 8px", borderRadius:"8px", border:`1.5px solid ${show3NPS?"#9a4a2a":"#e0d8cc"}`, cursor:"pointer", fontFamily:"'Outfit',sans-serif", background:show3NPS?"#9a4a2a0d":"#fafaf8", transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"center", gap:"7px" }}>
                 <svg width="36" height="18" viewBox="0 0 36 18" fill="none">
-                  <text x="4" y="13" fontSize="14" fontWeight="700" fill={show3NPS?"#7c3aed":"#ccc"} opacity="0.15" fontFamily="sans-serif">3</text>
-                  <line x1="2" y1="9" x2="34" y2="9" stroke={show3NPS?"#7c3aed":"#ccc"} strokeWidth="1.5"/>
-                  <circle cx="10" cy="9" r="4" fill={show3NPS?"#7c3aed":"#ccc"}/>
-                  <circle cx="20" cy="9" r="4" fill={show3NPS?"#7c3aed":"#ccc"}/>
-                  <circle cx="30" cy="9" r="4" fill={show3NPS?"#7c3aed":"#ccc"}/>
+                  <line x1="2" y1="9" x2="34" y2="9" stroke={show3NPS?"#9a4a2a":"#ccc"} strokeWidth="1.5"/>
+                  <circle cx="10" cy="9" r="4" fill={show3NPS?"#9a4a2a":"#ccc"}/>
+                  <circle cx="20" cy="9" r="4" fill={show3NPS?"#9a4a2a":"#ccc"}/>
+                  <circle cx="30" cy="9" r="4" fill={show3NPS?"#9a4a2a":"#ccc"}/>
                 </svg>
-                <span style={{ fontSize:"0.7rem", fontWeight:"600", color:show3NPS?"#7c3aed":"#bbb" }}>3NPS {show3NPS?"ON":"OFF"}</span>
+                <span style={{ fontSize:"0.7rem", fontWeight:"600", color:show3NPS?"#9a4a2a":"#bbb" }}>3NPS {show3NPS?"ON":"OFF"}</span>
+              </button>
+            )}
+            {mode === "scale" && SCALES[selectedScale]?.intervals?.length === 7 && (
+              <button onClick={()=>{ const next=!show313; setShow313(next); setString313(0); setPosition313(0); if(next){setShowCaged(false);setShow3NPS(false);} else {setAutoPlay313(false);setBeatCount313(0);stopMetro();} }} style={{ flex:1, padding:"7px 8px", borderRadius:"8px", border:`1.5px solid ${show313?"#c8a96e":"#e0d8cc"}`, cursor:"pointer", fontFamily:"'Outfit',sans-serif", background:show313?"#c8a96e0d":"#fafaf8", transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"center", gap:"7px" }}>
+                <svg width="44" height="18" viewBox="0 0 44 18" fill="none">
+                  <line x1="2" y1="9" x2="42" y2="9" stroke={show313?"#c8a96e":"#ccc"} strokeWidth="1.5"/>
+                  <circle cx="6"  cy="9" r="3.5" fill={show313?"#c8a96e":"#ccc"}/>
+                  <circle cx="14" cy="9" r="3.5" fill={show313?"#c8a96e":"#ccc"}/>
+                  <circle cx="22" cy="9" r="3.5" fill={show313?"#c8a96e":"#ccc"}/>
+                  <circle cx="28" cy="9" r="4.5" fill={show313?"#9a4a2a":"#ddd"} stroke={show313?"#c8a96e":"#ccc"} strokeWidth="1.5"/>
+                  <circle cx="35" cy="9" r="3.5" fill={show313?"#c8a96e":"#ccc"}/>
+                  <circle cx="42" cy="9" r="3.5" fill={show313?"#c8a96e":"#ccc"}/>
+                </svg>
+                <span style={{ fontSize:"0.7rem", fontWeight:"600", color:show313?"#c8a96e":"#bbb" }}>3-1-3 {show313?"ON":"OFF"}</span>
               </button>
             )}
           </div>
@@ -874,97 +1043,127 @@ export default function GuitarApp() {
         </div>
       )}
 
-      {/* ── Display: Notas / Intervalos unificado ── */}
-      <div style={{ ...panel, maxWidth:"1100px", margin:"0 auto 14px" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"12px" }}>
-          <span style={lbl}>Display en el diapasón</span>
-          <div style={{ display:"flex", background:"#ddd5c4", borderRadius:"100px", padding:"3px", gap:"2px" }}>
-            <button onClick={()=>setShowNotes(false)} style={{ padding:"5px 14px", borderRadius:"100px", border:"none", cursor:"pointer", fontFamily:"'Outfit',sans-serif", fontWeight:"500", fontSize:"0.78rem", background:!showNotes?"#fffdf8":"transparent", color:!showNotes?"#1a1a1a":"#999", boxShadow:!showNotes?"0 1px 3px rgba(0,0,0,0.1)":"none", transition:"all 0.2s" }}>Intervalos</button>
-            <button onClick={()=>setShowNotes(true)}  style={{ padding:"5px 14px", borderRadius:"100px", border:"none", cursor:"pointer", fontFamily:"'Outfit',sans-serif", fontWeight:"500", fontSize:"0.78rem", background:showNotes?"#fffdf8":"transparent",  color:showNotes?"#1a1a1a":"#999",  boxShadow:showNotes?"0 1px 3px rgba(0,0,0,0.1)":"none",  transition:"all 0.2s" }}>Notas</button>
+      {/* ── Display: Intervalos ── */}
+      {!showCaged && !show3NPS && !show313 && (
+      <div style={{ ...panel, maxWidth:"1100px", margin:"0 auto 14px", padding:"12px 20px", minHeight:"72px" }}>
+        <span style={lbl}>Display en el diapasón</span>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:"7px", alignItems:"center" }}>
+          {/* Root / 8va chip informativo */}
+          <div style={{ padding:"6px 14px", borderRadius:"20px", fontSize:"0.78rem", fontWeight:"500", fontFamily:"'Outfit',sans-serif", border:"1.5px solid #c8392b", background:"#c8392b12", color:"#c8392b", cursor:"default" }}>
+            R Root / 8va
           </div>
-        </div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:"7px", marginBottom:"10px" }}>
-          {ALL_INTERVALS.filter(iv=>presentIntervals.includes(iv.semitones)).map(iv=>{
+          {ALL_INTERVALS.filter(iv=>presentIntervals.includes(iv.semitones) && iv.semitones !== 0).map(iv=>{
+            // Labels contextuales por escala
+            const contextLabel = (() => {
+              if (mode === "scale") {
+                if (["minor","harmonicMinor","phrygian"].includes(selectedScale) && iv.semitones === 8) return "b6";
+                if (selectedScale === "lydian" && iv.semitones === 6) return "#4";
+              }
+              return iv.label;
+            })();
+            const contextName = (() => {
+              if (mode === "scale") {
+                if (["minor","harmonicMinor","phrygian"].includes(selectedScale) && iv.semitones === 8) return "6ta menor";
+                if (selectedScale === "lydian" && iv.semitones === 6) return "4ta aum.";
+              }
+              return iv.name;
+            })();
             const off=disabledIvs.has(iv.semitones);
             return <button key={iv.semitones} onClick={()=>toggleIv(iv.semitones)} style={{ padding:"6px 14px", borderRadius:"20px", cursor:"pointer", fontSize:"0.78rem", fontWeight:"500", fontFamily:"'Outfit',sans-serif", border:`1.5px solid ${off?"#ddd":iv.color}`, background:off?"#fdf8f0":`${iv.color}12`, color:off?"#ccc":iv.color, textDecoration:off?"line-through":"none", opacity:off?0.5:1, transition:"all 0.14s" }}>
-              {iv.label} <span style={{ opacity:0.7, fontSize:"0.7rem" }}>{iv.name}</span>
+              {contextLabel} <span style={{ opacity:0.7, fontSize:"0.7rem" }}>{contextName}</span>
             </button>;
           })}
         </div>
-        {mode!=="harmonized" && activeNotes.length > 0 && (
-          <div style={{ display:"flex", flexWrap:"wrap", gap:"6px", alignItems:"center", paddingTop:"10px", borderTop:"1px solid #ede5d8" }}>
-            <span style={{ fontSize:"0.65rem", color:"#bbb", marginRight:"2px" }}>{NOTE_NAMES_ES[selectedRoot]} {mode==="scale"?SCALES[selectedScale].name:CHORD_TYPES[selectedChord].name}:</span>
-            {activeNotes.map((ni,i)=>{
-              const iv=presentIntervals[i], meta=ALL_INTERVALS.find(m=>m.semitones===iv), off=disabledIvs.has(iv);
-              return <div key={i} style={{ padding:"3px 10px", borderRadius:"20px", fontSize:"0.75rem", fontWeight:"500", background:off?"#ede5d8":`${meta?.color}18`, color:off?"#ccc":meta?.color, border:`1px solid ${off?"#e8e8e3":(meta?.color||"#ccc")+"44"}`, textDecoration:off?"line-through":"none", opacity:off?0.5:1 }}>{NOTE_NAMES_ES[NOTES[ni]]}</div>;
-            })}
-          </div>
-        )}
       </div>
+      )}
 
-      {/* ── 3NPS panel ── */}
+      {/* ── 3NPS panel — compacto ── */}
       {mode==="scale" && show3NPS && (() => {
-        const scaleIntervals = SCALES[selectedScale]?.intervals;
-        const is7note = scaleIntervals?.length === 7;
         const GREEK_MODES = ["Jónico","Dórico","Frigio","Lidio","Mixolidio","Eólico","Locrio"];
         const ROMAN = ["I","II","III","IV","V","VI","VII"];
+        const is7note = SCALES[selectedScale]?.intervals?.length === 7;
         return (
-          <div style={{ ...panel, maxWidth:"1100px", margin:"0 auto 14px", borderColor:"#7c3aed44" }}>
-            <div style={{ marginBottom:"14px" }}>
-              <span style={{ fontSize:"0.82rem", fontWeight:"600", color:"#7c3aed" }}>🎸 3 NOTAS POR CUERDA</span>
-              <span style={{ fontSize:"0.68rem", color:"#bbb", marginLeft:"10px" }}>Patrones de escala en el mástil</span>
-            </div>
-            {!is7note && (
-              <p style={{ fontSize:"0.68rem", color:"#f97316", margin:0 }}>3NPS requiere una escala de 7 notas.</p>
-            )}
-            {is7note && (
-              <div>
-                <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"10px" }}>
-                  <button onClick={()=>setNpsPattern(p=>(p+6)%7)} style={{ width:"32px", height:"32px", borderRadius:"50%", border:"1px solid #d4c4a8", background:"#fdf8f0", cursor:"pointer", fontSize:"1rem", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>‹</button>
-                  <div style={{ flex:1, textAlign:"center", padding:"8px 12px", borderRadius:"10px", background:"#7c3aed0d", border:"1.5px solid #7c3aed33" }}>
-                    <div style={{ fontSize:"0.9rem", fontWeight:"700", color:"#7c3aed" }}>Patrón {npsPattern+1} · {ROMAN[npsPattern]}</div>
-                    <div style={{ fontSize:"0.68rem", color:"#9a7ad4", marginTop:"2px" }}>{GREEK_MODES[npsPattern]}</div>
+          <div style={{ maxWidth:"1100px", margin:"0 auto 14px", background:"#fffdf8", borderRadius:"14px", border:"1px solid #ddd5c4", padding:"12px 20px", display:"flex", alignItems:"center", gap:"10px", minHeight:"72px" }}>
+            <span style={{ fontSize:"0.72rem", fontWeight:"700", color:"#9a4a2a", flexShrink:0 }}>3NPS</span>
+            {!is7note
+              ? <span style={{ fontSize:"0.68rem", color:"#f97316" }}>Requiere escala de 7 notas</span>
+              : <>
+                  <button onClick={()=>setNpsPattern(p=>(p+6)%7)} style={{ width:"24px", height:"24px", borderRadius:"50%", border:"1px solid #d4c4a8", background:"#fdf8f0", cursor:"pointer", fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>‹</button>
+                  <div style={{ flex:1, textAlign:"center", padding:"4px 10px", borderRadius:"8px", background:"#9a4a2a0d", border:"1px solid #9a4a2a33" }}>
+                    <span style={{ fontSize:"0.78rem", fontWeight:"700", color:"#9a4a2a" }}>Patrón {npsPattern+1} · {GREEK_MODES[npsPattern]}</span>
                   </div>
-                  <button onClick={()=>setNpsPattern(p=>(p+1)%7)} style={{ width:"32px", height:"32px", borderRadius:"50%", border:"1px solid #d4c4a8", background:"#fdf8f0", cursor:"pointer", fontSize:"1rem", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>›</button>
-                </div>
-                <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
-                  {GREEK_MODES.map((g,i)=>(
-                    <button key={i} onClick={()=>setNpsPattern(i)} style={{ flex:1, minWidth:"52px", padding:"6px 4px", borderRadius:"8px", border:`1.5px solid ${npsPattern===i?"#7c3aed":"#e0d8cc"}`, background:npsPattern===i?"#7c3aed":"#fdf8f0", color:npsPattern===i?"#fff":"#aaa", fontSize:"0.72rem", fontWeight:"600", cursor:"pointer", fontFamily:"'Outfit',sans-serif", transition:"all 0.12s", textAlign:"center" }}>
-                      <div>{i+1}</div>
-                      <div style={{ fontSize:"0.55rem", opacity:0.75, marginTop:"1px" }}>{g.slice(0,3)}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+                  <button onClick={()=>setNpsPattern(p=>(p+1)%7)} style={{ width:"24px", height:"24px", borderRadius:"50%", border:"1px solid #d4c4a8", background:"#fdf8f0", cursor:"pointer", fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>›</button>
+                  <button onClick={()=>{ if(npsAutoPlay){setNpsAutoPlay(false);setNpsBeatCount(0);stopMetro();}else{setNpsAutoPlay(true);setNpsBeatCount(0);if(!metroOn)startMetro();} }} style={{ width:"24px", height:"24px", borderRadius:"50%", border:`1.5px solid ${npsAutoPlay?"#9a4a2a":"#d4c4a8"}`, background:npsAutoPlay?"#9a4a2a":"#fdf8f0", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                      {npsAutoPlay?<><rect x="5" y="4" width="5" height="16" rx="1.5" fill="#fff"/><rect x="14" y="4" width="5" height="16" rx="1.5" fill="#fff"/></>:<path d="M6 4 L6 20 L20 12 Z" fill="#9a4a2a"/>}
+                    </svg>
+                  </button>
+                  {npsAutoPlay && <span style={{ fontSize:"0.62rem", color:"#c8896a", flexShrink:0 }}>{npsBeatCount}/17</span>}
+                </>
+            }
           </div>
         );
       })()}
 
-      {/* ── CAGED ── */}
-      {mode !== "harmonized" && showCaged && (
-      <div style={{ ...panel, maxWidth:"1100px", margin:"0 auto 14px", borderColor:"#c8b89a" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"14px" }}>
-          <div>
-            <span style={{ fontSize:"0.82rem", fontWeight:"600", color:"#1a1a1a" }}>🔷 SISTEMA CAGED</span>
-            <span style={{ fontSize:"0.68rem", color:"#bbb", marginLeft:"10px" }}>Posiciones del acorde en el mástil</span>
+      {/* ── 3-1-3 panel — compacto ── */}
+      {mode==="scale" && show313 && (
+        <div style={{ maxWidth:"1100px", margin:"0 auto 14px", background:"#fffdf8", borderRadius:"14px", border:"1px solid #ddd5c4", padding:"12px 20px", display:"flex", alignItems:"center", gap:"10px", minHeight:"72px" }}>
+          <span style={{ fontSize:"0.72rem", fontWeight:"700", color:"#a07840", flexShrink:0 }}>3-1-3</span>
+          <div style={{ display:"flex", gap:"4px", flexShrink:0 }}>
+            {[{label:"6"},{label:"5"}].map((opt,i)=>(
+              <button key={i} onClick={()=>{setString313(i);setPosition313(0);}} style={{ padding:"2px 8px", borderRadius:"6px", border:`1.5px solid ${string313===i?"#c8a96e":"#e0d8cc"}`, background:string313===i?"#c8a96e":"#fdf8f0", color:string313===i?"#fff":"#aaa", cursor:"pointer", fontSize:"0.72rem", fontWeight:"700", fontFamily:"'Outfit',sans-serif" }}>
+                {opt.label}
+              </button>
+            ))}
           </div>
+          {all313Positions.length > 0 ? <>
+            <button onClick={()=>setPosition313(p=>Math.max(0,p-1))} disabled={position313===0} style={{ width:"24px", height:"24px", borderRadius:"50%", border:"1px solid #d4c4a8", background:"#fdf8f0", cursor:"pointer", fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, opacity:position313===0?0.3:1 }}>‹</button>
+            <div style={{ flex:1, textAlign:"center", padding:"4px 10px", borderRadius:"8px", background:"#c8a96e0d", border:"1px solid #c8a96e44" }}>
+              <span style={{ fontSize:"0.78rem", fontWeight:"700", color:"#a07840" }}>Pos {position313+1}/{all313Positions.length} · tr.{all313Positions[Math.min(position313,all313Positions.length-1)].anchorFret}</span>
+            </div>
+            <button onClick={()=>setPosition313(p=>Math.min(all313Positions.length-1,p+1))} disabled={position313>=all313Positions.length-1} style={{ width:"24px", height:"24px", borderRadius:"50%", border:"1px solid #d4c4a8", background:"#fdf8f0", cursor:"pointer", fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, opacity:position313>=all313Positions.length-1?0.3:1 }}>›</button>
+            <button onClick={()=>{ if(autoPlay313){setAutoPlay313(false);setBeatCount313(0);stopMetro();}else{setAutoPlay313(true);setBeatCount313(0);if(!metroOn)startMetro();} }} style={{ width:"24px", height:"24px", borderRadius:"50%", border:`1.5px solid ${autoPlay313?"#c8a96e":"#d4c4a8"}`, background:autoPlay313?"#c8a96e":"#fdf8f0", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                {autoPlay313?<><rect x="5" y="4" width="5" height="16" rx="1.5" fill="#fff"/><rect x="14" y="4" width="5" height="16" rx="1.5" fill="#fff"/></>:<path d="M6 4 L6 20 L20 12 Z" fill="#a07840"/>}
+              </svg>
+            </button>
+            {autoPlay313 && <span style={{ fontSize:"0.62rem", color:"#c8a96e", flexShrink:0 }}>{beatCount313}/13</span>}
+          </> : <span style={{ fontSize:"0.68rem", color:"#f97316" }}>Sin patrones en esta cuerda</span>}
         </div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:"8px", marginBottom:"10px" }}>
-          {["C","A","G","E","D"].map(sh=>{
-            const c=CAGED_COLORS[sh], on=activeCaged.has(sh), pos=cagedPositions.find(p=>p.shape===sh);
-            return <button key={sh} onClick={()=>toggleCaged(sh)} onMouseEnter={()=>setHoveredShape(sh)} onMouseLeave={()=>setHoveredShape(null)} style={{ padding:"8px 16px", borderRadius:"9px", border:`1.5px solid ${on?c.border:"#d4c4a8"}`, cursor:"pointer", fontFamily:"'Outfit',sans-serif", background:on?`${c.border}10`:"#fdf8f0", color:on?c.text:"#bbb", fontWeight:"600", fontSize:"0.9rem", opacity:on?1:0.45 }}>
-              {sh}{pos&&<span style={{ fontSize:"0.6rem", opacity:0.65, marginLeft:"6px" }}>tr.{pos.loFret===0?"open":pos.loFret}</span>}
-            </button>;
-          })}
+      )}
+
+      {/* ── CAGED — compacto ── */}
+      {mode !== "harmonized" && showCaged && (
+        <div style={{ maxWidth:"1100px", margin:"0 auto 14px", background:"#fffdf8", borderRadius:"14px", border:"1px solid #ddd5c4", padding:"12px 20px", display:"flex", alignItems:"center", gap:"10px", minHeight:"72px" }}>
+          <span style={{ fontSize:"0.72rem", fontWeight:"700", color:"#a07840", flexShrink:0 }}>CAGED</span>
+          <div style={{ display:"flex", gap:"5px" }}>
+            {["C","A","G","E","D"].map(sh=>{
+              const c=CAGED_COLORS[sh], on=activeCaged.has(sh), pos=cagedPositions.find(p=>p.shape===sh);
+              return <button key={sh} onClick={()=>setActiveCaged(new Set([sh]))} onMouseEnter={()=>setHoveredShape(sh)} onMouseLeave={()=>setHoveredShape(null)} style={{ padding:"2px 10px", borderRadius:"6px", border:`1.5px solid ${on?c.border:"#d4c4a8"}`, cursor:"pointer", fontFamily:"'Outfit',sans-serif", background:on?`${c.border}18`:"#fdf8f0", color:on?c.text:"#bbb", fontWeight:"700", fontSize:"0.78rem", opacity:on?1:0.5 }}>
+                {sh}{pos&&<span style={{ fontSize:"0.55rem", opacity:0.7, marginLeft:"4px" }}>tr.{pos.loFret===0?"0":pos.loFret}</span>}
+              </button>;
+            })}
+          </div>
+          <span style={{ fontSize:"0.62rem", color:"#bbb", marginLeft:"auto" }}>hover para resaltar</span>
         </div>
-        <p style={{ fontSize:"0.68rem", color:"#aaa", margin:0 }}>Pasá el cursor sobre una forma para resaltarla en el diapasón. Las notas son exactas y verificadas.</p>
-      </div>
       )}
 
       {/* ── Fretboard ── */}
       <div style={{ maxWidth:"1100px", margin:"0 auto", background:"#fff", borderRadius:"16px", padding:"18px 18px 30px", border:"1px solid #ddd5c4", overflowX:"auto", boxShadow:"0 1px 4px rgba(0,0,0,0.05)" }}>
         <div style={{ minWidth:"820px" }}>
+
+          {/* Fretboard header: toggle */}
+          <div style={{ display:"flex", justifyContent:"flex-end", alignItems:"center", gap:"8px", marginBottom:"8px" }}>
+            {showNotes && (
+              <a href="#/docs" style={{ fontSize:"0.6rem", color:"#c8a96e", textDecoration:"none", border:"1px solid #e8d8b8", borderRadius:"20px", padding:"2px 8px", background:"#fdf8f0", cursor:"pointer", whiteSpace:"nowrap" }} title="MONA simplifica los enarmónicos. F en vez de E#. Ver sección Avanzado.">
+                Ver Enarmónicos en Manual MONA
+              </a>
+            )}
+            <div style={{ display:"flex", background:"#ddd5c4", borderRadius:"100px", padding:"3px", gap:"2px" }}>
+              <button onClick={()=>setShowNotes(false)} style={{ padding:"4px 12px", borderRadius:"100px", border:"none", cursor:"pointer", fontFamily:"'Outfit',sans-serif", fontWeight:"500", fontSize:"0.72rem", background:!showNotes?"#fffdf8":"transparent", color:!showNotes?"#1a1a1a":"#999", boxShadow:!showNotes?"0 1px 3px rgba(0,0,0,0.1)":"none", transition:"all 0.2s" }}>Intervalos</button>
+              <button onClick={()=>setShowNotes(true)}  style={{ padding:"4px 12px", borderRadius:"100px", border:"none", cursor:"pointer", fontFamily:"'Outfit',sans-serif", fontWeight:"500", fontSize:"0.72rem", background:showNotes?"#fffdf8":"transparent",  color:showNotes?"#1a1a1a":"#999",  boxShadow:showNotes?"0 1px 3px rgba(0,0,0,0.1)":"none",  transition:"all 0.2s" }}>Notas</button>
+            </div>
+          </div>
 
           {/* Fret numbers */}
           <div style={{ display:"flex", marginBottom:"8px", paddingLeft:"80px" }}>
@@ -1007,7 +1206,16 @@ export default function GuitarApp() {
                       style={{ width:"56px", display:"flex", justifyContent:"center", alignItems:"center", position:"relative", height:"44px", cursor:"pointer" }}>
                       <div style={{ position:"absolute", width:"100%", height:`${thickness}px`, background:"rgba(180,140,60,0.45)", top:"50%", transform:"translateY(-50%)" }}/>
                       {isPreview&&!disp&&<div style={{ width:"32px", height:"32px", borderRadius:"50%", background:"rgba(200,200,200,0.25)", color:"#bbb", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.6rem", fontWeight:"700", zIndex:1, border:"1.5px dashed rgba(249,115,22,0.5)" }}>{NOTE_NAMES_ES[NOTES[ni]]}</div>}
-                      {disp&&<div style={{ width:"32px", height:"32px", borderRadius:"50%", background:disp.bg, color:disp.textColor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:showNotes?"0.52rem":"0.65rem", fontWeight:"700", zIndex:1, border:`2px solid ${disp.borderColor}`, boxShadow:`0 2px 6px rgba(${parseInt(disp.borderColor.replace('#','').slice(0,2),16)},${parseInt(disp.borderColor.replace('#','').slice(2,4),16)},${parseInt(disp.borderColor.replace('#','').slice(4,6),16)},0.3)`, transform:isHovered?"scale(1.2)":"scale(1)", transition:"transform 0.1s" }}>{disp.label}</div>}
+                      {disp&&(()=>{
+                        const interval=(ni-displayRootIdx+12)%12;
+                        const openZone=showCaged?cagedPositions.find(p=>activeCaged.has(p.shape)&&0>=p.loFret&&0<=p.hiFret):null;
+                        const isChordNote=openZone&&cagedChordIntervals.has(interval);
+                        const isRoot=interval===0;
+                        const cagedColor=isChordNote?CAGED_COLORS[openZone.shape]?.border:null;
+                        const bg=cagedColor||disp.bg, textColor=cagedColor?"#fff":disp.textColor;
+                        const border=isRoot&&cagedColor?`3px solid #c8392b`:cagedColor?`2px solid ${cagedColor}`:`2px solid ${disp.borderColor}`;
+                        return <div style={{ width:"32px", height:"32px", borderRadius:"50%", background:bg, color:textColor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:showNotes?"0.52rem":"0.65rem", fontWeight:"700", zIndex:1, border, transform:isHovered?"scale(1.2)":"scale(1)", transition:"transform 0.1s" }}>{disp.label}</div>;
+                      })()}
                     </div>
                   );
                 })()}
@@ -1045,7 +1253,16 @@ export default function GuitarApp() {
                       {isPreviewCell&&!disp&&<div style={{ width:"32px", height:"32px", borderRadius:"50%", background:"rgba(200,200,200,0.25)", color:"#bbb", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.55rem", fontWeight:"700", zIndex:2, position:"relative", border:"1.5px dashed rgba(249,115,22,0.5)" }}>{NOTE_NAMES_ES[NOTES[ni]]}</div>}
 
                       {/* Note dot */}
-                      {disp&&<div style={{ width:"32px", height:"32px", borderRadius:"50%", background:disp.bg, color:disp.textColor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:showNotes?"0.52rem":"0.65rem", fontWeight:"700", zIndex:2, position:"relative", border:`2px solid ${disp.borderColor}`, boxShadow:`0 2px 6px rgba(${parseInt(disp.borderColor.replace('#','').slice(0,2),16)},${parseInt(disp.borderColor.replace('#','').slice(2,4),16)},${parseInt(disp.borderColor.replace('#','').slice(4,6),16)},0.3)`, transform:isHoveredCell?"scale(1.2)":"scale(1)", transition:"transform 0.1s" }}>{disp.label}</div>}
+                      {disp&&(()=>{
+                        const interval=(ni-displayRootIdx+12)%12;
+                        const isRoot=interval===0;
+                        const activeZone=showCaged?cagedPositions.find(p=>activeCaged.has(p.shape)&&fretNum>=p.loFret&&fretNum<=p.hiFret):null;
+                        const isChordNote=activeZone&&cagedChordIntervals.has(interval);
+                        const cagedColor=isChordNote?CAGED_COLORS[activeZone.shape]?.border:null;
+                        const bg=cagedColor||disp.bg, textColor=cagedColor?"#fff":disp.textColor;
+                        const border=isRoot&&cagedColor?`3px solid #c8392b`:cagedColor?`2px solid ${cagedColor}`:`2px solid ${disp.borderColor}`;
+                        return <div style={{ width:"32px", height:"32px", borderRadius:"50%", background:bg, color:textColor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:showNotes?"0.52rem":"0.65rem", fontWeight:"700", zIndex:2, position:"relative", border, transform:isHoveredCell?"scale(1.2)":"scale(1)", transition:"transform 0.1s" }}>{disp.label}</div>;
+                      })()}
                     </div>
                   );
                 })}

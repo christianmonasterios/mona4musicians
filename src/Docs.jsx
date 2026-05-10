@@ -243,17 +243,17 @@ function Intermedio() {
         body="En el panel Display podés ocultar o mostrar intervalos individuales. Por ejemplo, dejá solo R + 3 + 5 para ver únicamente las notas del acorde dentro de la escala."
         tip="Muy útil para enfocarte en las notas más importantes al improvisar sobre un acorde."/>
 
-      <Step n={3} title="Sistema CAGED"
-        body="El sistema CAGED divide el mástil en 5 formas de acorde que cubren todo el diapasón. Activalo con el botón CAGED en el panel Modo. Cada forma se colorea distinto para identificarla fácilmente."
-        tip="Pasá el cursor sobre cada forma (C, A, G, E, D) para resaltarla en el diapasón."/>
+      <Step n={3} title="Sistema CAGED mejorado"
+        body="El sistema CAGED divide el mástil en 5 formas de acorde (C, A, G, E, D). Activalo solo en escalas Mayor o Menor. Al activarlo muestra la forma C por defecto — las notas del acorde (R, 3, 5) se resaltan con el color de la forma. Clickeá C, A, G, E o D para navegar entre posiciones."
+        tip="Solo disponible en Mayor (Jónico) y Menor (Eólico). Las notas del acorde aparecen en el color de la forma activa."/>
 
       <Step n={4} title="Classic vs Wizard"
         body="Classic muestra solo la raíz en rojo y el resto en negro — ideal para enfocarse en la posición. Wizard le asigna un color único a cada intervalo para entender la estructura de la escala visualmente."
         tip="Cambiá entre los dos desde el header de la app, en la parte superior."/>
 
-      <Step n={5} title="Escala Armonizada"
-        body="En el modo Armonía ves los 7 acordes que pertenecen a una tonalidad. Clickeá cada grado (I, ii, iii...) para ver ese acorde en el diapasón y conocer su función armónica: Tónica, Subdominante o Dominante."
-        tip="Disponible para Mayor, Menor, Menor Armónica y Dórico. Podés ver tríadas o acordes con 7ma."/>
+      <Step n={5} title="Escalas y Display en el diapasón"
+        body="El marco Display muestra los intervalos de la escala activa como chips. Podés ocultar intervalos individuales clickeando cada chip para enfocarte en los más importantes. El toggle Intervalos/Notas (arriba del diapasón) cambia lo que muestran los dots en el mástil."
+        tip="Dejá solo R + 3 + 5 para ver las notas del acorde dentro de la escala. El chip Root/8va siempre está visible como referencia."/>
     </div>
   );
 }
@@ -271,9 +271,13 @@ function Avanzado() {
 
       <Step n={2} title="Los 7 patrones de 3NPS"
         body="3 Notas Por Cuerda (3NPS) organiza la escala en 7 patrones posicionales, uno por cada grado. Cada patrón tiene exactamente 3 notas por cuerda, lo que permite velocidad y consistencia técnica. Activalo con el botón 3NPS en el panel Modo cuando estés en Escalas."
-        tip="Navegá entre los 7 patrones con las flechas ‹ › o clickeando los botones numerados del 1 al 7."/>
+        tip="Usá el botón ▶ para activar el auto-avance — sincronizado con el metrónomo, cambia de patrón cada 17 tiempos para que practiques cada posición."/>
 
-      <Step n={3} title="Conectar los 7 patrones"
+      <Step n={3} title="Patrón 3-1-3 — estilo jazz"
+        body="El patrón 3-1-3 organiza la escala en grupos de 3 notas en la cuerda grave, 1 nota pivot (la 5ta, resaltada en dorado) en la cuerda del medio, y 3 notas en la cuerda aguda. Elegís desde qué cuerda empezar y MONA muestra el patrón completo hasta la cuerda 1."
+        tip="El auto-avance cambia de posición cada 13 tiempos del metrónomo. Hay 4 patrones duplicados — es una propiedad de la escala Mayor, no un error."/>
+
+      <Step n={4} title="Conectar los 7 patrones de 3NPS"
         body="Cada patrón 3NPS se superpone con el siguiente. Los últimos 2 trastes de un patrón son los primeros 2 del siguiente. Dominar estas transiciones es lo que te permite cubrir todo el mástil sin saltos ni lagunas."
         tip="Practicá C Mayor: patrón 1 completo, luego la transición 1→2, luego 2→3, y así hasta el 7."/>
 
@@ -284,58 +288,131 @@ function Avanzado() {
       <Step n={5} title="Improvisar sobre acordes"
         body="Usá el modo Armonía para identificar qué acorde estás parado. Clickeá ese grado — el diapasón te muestra las notas del acorde. Esas son las notas más seguras para improvisar. Las otras notas de la escala funcionan como tensiones que resuelven a esas notas del acorde."
         tip="Combiná con 3NPS para ver qué patrones están disponibles en esa zona del mástil."/>
+
+      <Step n={7} title="Enarmónicos en MONA"
+        body="MONA simplifica la nomenclatura para que sea más fácil de leer en el diapasón. En vez de mostrar nombres teóricos como E# o B#, usamos siempre el nombre más conocido: F en lugar de E#, C en lugar de B#. Por ejemplo, para C# menor los dots muestran A# + C# + F — no A# + C# + E#. Más fácil de ubicar, más fácil de aprender.">
+        <div style={{ background:"#f7ede0", borderRadius:"10px", padding:"12px 16px", margin:"10px 0", fontSize:"0.78rem", color:"#555", lineHeight:1.7 }}>
+          <strong style={{ color:"#1a1a1a" }}>Equivalencias más comunes:</strong>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"4px", marginTop:"8px" }}>
+            {[["E# → F","B# → C"],["Cb → B","Fb → E"],["C# = Db","F# = Gb"],["A# = Bb","D# = Eb"]].map(([a,b],i) => (
+              <div key={i} style={{ display:"flex", gap:"12px" }}>
+                <span style={{ color:"#9a4a2a", fontWeight:"600" }}>{a}</span>
+                <span style={{ color:"#9a4a2a", fontWeight:"600" }}>{b}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ fontSize:"0.72rem", color:"#888", fontStyle:"italic", marginTop:"6px" }}>
+          En el modo Notas del diapasón siempre aparece el nombre más simple y reconocible.
+        </div>
+      </Step>
+    </div>
+  );
+}
+
+function Practica() {
+  const ejercicios = [
+    {
+      cat: "Acordes",
+      color: "#9a4a2a",
+      bg: "#fdf2ee",
+      border: "#e8b8a8",
+      items: [
+        { title:"Triadas mayores y menores", body:"Acordes → Mayor (o Menor). El diapasón muestra R + 3 + 5 en todo el mástil." },
+        { title:"Arpeggios", body:"Acordes → elegí el tipo. Desactivá el sonido y recorré los dots uno por uno de grave a agudo." },
+        { title:"Acordes con 7ma", body:"Acordes → Dom7, Maj7 o Min7. Aparece la 7ma como intervalo adicional en el diapasón." },
+        { title:"Ver un acorde en todas las posiciones", body:"Escalas → Mayor → activá CAGED. Navegá entre C, A, G, E, D para ver el mismo acorde en 5 posiciones distintas." },
+      ]
+    },
+    {
+      cat: "Escalas",
+      color: "#16a34a",
+      bg: "#f0fdf4",
+      border: "#bbf7d0",
+      items: [
+        { title:"Escala mayor en todo el mástil", body:"Escalas → Mayor. Todos los dots encendidos son notas de la escala. Usá el toggle Intervalos/Notas para ver nombres o números." },
+        { title:"Pentatónica dentro de la mayor", body:"Escalas → Pent. Mayor. Compará con Mayor — las notas que desaparecen son las que la pentatónica omite." },
+        { title:"Escala de blues", body:"Escalas → Blues. El dot b5 es la blue note — la nota característica del sonido blues." },
+        { title:"Comparar mayor vs menor", body:"Seleccioná la misma raíz, cambiá entre Mayor y Menor. Los dots b3, b6 y b7 son los que cambian." },
+        { title:"Explorar un modo", body:"Escalas → elegí el modo (Dórico, Frigio, etc.). Cada modo tiene su color sonoro por la posición de los bemoles y sostenidos." },
+      ]
+    },
+    {
+      cat: "Patrones",
+      color: "#7c3aed",
+      bg: "#f5f3ff",
+      border: "#ddd6fe",
+      items: [
+        { title:"3NPS posición por posición", body:"Escalas → 3NPS ON. Navegá con ‹ › entre los 7 patrones. Cada uno cubre una zona distinta del mástil." },
+        { title:"3NPS con metrónomo", body:"Activá 3NPS + metrónomo + ▶ auto-avance. Cada 17 tiempos cambia de patrón — practicá cada posición al tempo." },
+        { title:"Patrón 3-1-3", body:"Escalas → 3-1-3 ON. Elegí desde qué cuerda empezar. El dot dorado es la nota pivot (5ta). Ideal para frases jazzeras." },
+        { title:"3-1-3 con metrónomo", body:"Activá 3-1-3 + metrónomo + ▶. Cada 13 tiempos cambia de posición automáticamente." },
+      ]
+    },
+    {
+      cat: "Armonía",
+      color: "#3b82f6",
+      bg: "#eff6ff",
+      border: "#bfdbfe",
+      items: [
+        { title:"Ver los 7 acordes de una tonalidad", body:"Armonía → elegí Mayor o Menor. Los 7 grados (I al VII) muestran qué acorde corresponde a cada nota de la escala." },
+        { title:"Qué notas suenan bien sobre un acorde", body:"Armonía → clickeá el grado. El diapasón muestra las notas de ese acorde — son las más seguras para improvisar encima." },
+        { title:"Entender funciones armónicas", body:"En Armonía cada grado tiene color: azul = Tónica, verde = Subdominante, naranja = Dominante. La progresión I→IV→V→I usa las tres." },
+        { title:"Intercambio modal", body:"Armonía → Mayor. Clickeá el grado ii — el modo es Dórico. Ahora cambiá a Escalas → Dórico con esa raíz para ver el mismo modo en todo el mástil." },
+        { title:"6tas y tensiones", body:"Escalas → Mayor. En Display desactivá todo excepto R y 6. Ves las 6tas de la escala. Activá 7 para agregar las séptimas." },
+      ]
+    },
+  ];
+
+  return (
+    <div>
+      <span style={styles.badge("#a07840", "#faeeda", "#f7c175")}>Práctica con MONA</span>
+      <h1 style={styles.title}>Ejercicios prácticos</h1>
+      <p style={styles.subtitle}>Casos concretos y cómo resolverlos en MONA. Directo al punto.</p>
+
+      {ejercicios.map((cat, ci) => (
+        <div key={ci} style={{ marginBottom:"28px" }}>
+          <div style={{ display:"inline-block", padding:"4px 14px", borderRadius:"20px", background:cat.bg, border:`1px solid ${cat.border}`, color:cat.color, fontSize:"0.75rem", fontWeight:"700", marginBottom:"14px", letterSpacing:"0.08em" }}>{cat.cat.toUpperCase()}</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+            {cat.items.map((item, ii) => (
+              <div key={ii} style={{ background:"#fffdf8", borderRadius:"12px", border:"1px solid #ede5d8", padding:"14px 16px", borderLeft:`3px solid ${cat.color}` }}>
+                <div style={{ fontSize:"0.85rem", fontWeight:"600", color:"#1a1a1a", marginBottom:"4px" }}>{item.title}</div>
+                <div style={{ fontSize:"0.78rem", color:"#666", lineHeight:1.6 }}>{item.body}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
 export default function Docs() {
   const [level, setLevel] = useState(0);
-  const levels = ["Principiante", "Intermedio", "Avanzado"];
-  const content = [<Principiante />, <Intermedio />, <Avanzado />];
+  const levels = ["Principiante", "Intermedio", "Avanzado", "Práctica"];
+  const content = [<Principiante />, <Intermedio />, <Avanzado />, <Practica />];
 
   return (
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
-        <svg style={styles.logo} width="280" height="66" viewBox="0 0 280 66" fill="none">
-          <path d="M-10 38 Q12 10 34 38 Q56 66 78 38 Q100 10 122 38 Q144 66 166 38 Q188 10 210 38 Q232 66 254 38 Q270 26 290 32"
-            stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" opacity="0.3"/>
-          <g transform="translate(10,6)">
-            <path d="M0 48 L10 5 Q20 37 30 5 L40 48" stroke="#1a1a1a" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <circle cx="20" cy="23" r="4" fill={GOLD}/>
-          </g>
-          <g transform="translate(62,10)">
-            <circle cx="20" cy="22" r="20" fill="none" stroke="#1a1a1a" strokeWidth="1.3" opacity="0.2"/>
-            <circle cx="20" cy="2"  r="2.5" fill="#1a1a1a"/>
-            <circle cx="34" cy="9"  r="2.5" fill="#1a1a1a" opacity="0.55"/>
-            <circle cx="40" cy="22" r="2.5" fill="#1a1a1a" opacity="0.45"/>
-            <circle cx="34" cy="35" r="2.5" fill="#1a1a1a" opacity="0.55"/>
-            <circle cx="20" cy="42" r="2.5" fill="#1a1a1a" opacity="0.45"/>
-            <circle cx="6"  cy="35" r="2.5" fill="#1a1a1a" opacity="0.55"/>
-            <circle cx="0"  cy="22" r="2.5" fill="#1a1a1a" opacity="0.45"/>
-            <circle cx="20" cy="22" r="3.5" fill={GOLD}/>
-            <line x1="20" y1="18" x2="20" y2="5" stroke="#1a1a1a" strokeWidth="1" opacity="0.3"/>
-          </g>
-          <g transform="translate(118,8)">
-            <line x1="0"  y1="0" x2="0"  y2="46" stroke="#1a1a1a" strokeWidth="4" strokeLinecap="round"/>
-            <line x1="30" y1="0" x2="30" y2="46" stroke="#1a1a1a" strokeWidth="4" strokeLinecap="round"/>
-            <line x1="0"  y1="3" x2="30" y2="43" stroke="#555"    strokeWidth="1.8" strokeLinecap="round"/>
-            <line x1="8"  y1="0" x2="8"  y2="46" stroke="#b8a88a" strokeWidth="0.8" opacity="0.5"/>
-            <line x1="21" y1="0" x2="21" y2="46" stroke="#b8a88a" strokeWidth="0.8" opacity="0.5"/>
-            <circle cx="9"  cy="12" r="3" fill="#1a1a1a"/>
-            <circle cx="21" cy="29" r="3" fill={GOLD}/>
-          </g>
-          <g transform="translate(164,8)">
-            <line x1="21" y1="0"  x2="0"  y2="50" stroke="#1a1a1a" strokeWidth="1.3" strokeLinecap="round" opacity="0.3"/>
-            <line x1="21" y1="0"  x2="42" y2="50" stroke="#1a1a1a" strokeWidth="1.3" strokeLinecap="round" opacity="0.3"/>
-            <line x1="9"  y1="33" x2="33" y2="33" stroke="#1a1a1a" strokeWidth="1.3" strokeLinecap="round" opacity="0.3"/>
-            <path d="M4 40 A20 20 0 0 1 40 40" stroke="#1a1a1a" strokeWidth="3.8" strokeLinecap="round" fill="none"/>
-            <line x1="4"  y1="40" x2="8"  y2="31" stroke="#888" strokeWidth="1.2" strokeLinecap="round"/>
-            <line x1="22" y1="20" x2="22" y2="26" stroke="#888" strokeWidth="1.2" strokeLinecap="round"/>
-            <line x1="40" y1="40" x2="36" y2="31" stroke="#888" strokeWidth="1.2" strokeLinecap="round"/>
-            <line x1="22" y1="40" x2="32" y2="22" stroke={GOLD} strokeWidth="2.5" strokeLinecap="round"/>
-            <circle cx="22" cy="40" r="4" fill={GOLD}/>
-          </g>
+        <svg style={styles.logo} width="260" height="110" viewBox="0 0 260 110" fill="none">
+          {/* Púa — borde exterior sutil */}
+          <path d="M62,6 C86,6 104,20 104,40 C104,68 62,98 62,98 C62,98 20,68 20,40 C20,20 38,6 62,6Z"
+            fill="none" stroke={GOLD} strokeWidth="1.5" opacity="0.35"/>
+          {/* Púa principal */}
+          <path d="M62,12 C83,12 98,24 98,42 C98,68 62,94 62,94 C62,94 26,68 26,42 C26,24 41,12 62,12Z"
+            fill="#fdf8f2" stroke={GOLD} strokeWidth="3"/>
+          {/* Onda dorada fina */}
+          <path d="M38,46 Q46,34 54,46 Q62,58 70,46 Q78,34 86,46"
+            fill="none" stroke={GOLD} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55"/>
+          {/* Onda terracota principal */}
+          <path d="M38,58 Q46,44 54,58 Q62,72 70,58 Q78,44 86,58"
+            fill="none" stroke="#9a4a2a" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"/>
+          {/* MONA a la derecha */}
+          <text x="112" y="62" fontFamily="'Outfit',sans-serif" fontSize="44" fontWeight="900" fill="#1a1a1a" letterSpacing="-1">MONA</text>
+          {/* VISUALIZÁ LA MÚSICA debajo de MONA */}
+          <text x="113" y="76" fontFamily="'Outfit',sans-serif" fontSize="8" fill="#aaa" letterSpacing="3">VISUALIZÁ LA MÚSICA</text>
         </svg>
         <p style={styles.tagline}>GUÍA DE USO</p>
         <Link to="/" style={styles.backLink}>← Volver a MONA</Link>
